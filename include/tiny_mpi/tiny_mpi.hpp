@@ -88,13 +88,13 @@ void mpi_check_op(sloc_t sloc, const char* symbol, Op&& op, Ts&&... ts) {
 /// Helper macro for mpi_check_op.
 #define mpi_check(sloc, op, ...) mpi_check_op(sloc, #op, (op), __VA_ARGS__)
 
-int mpi_rank(sloc_t sloc = sloc_t::current()) {
+static inline int mpi_rank(sloc_t sloc = sloc_t::current()) {
   int rank;
   mpi_check(sloc, MPI_Comm_rank, MPI_COMM_WORLD, &rank);
   return rank;
 }
 
-int mpi_n_ranks(sloc_t sloc = sloc_t::current()) {
+static inline int mpi_n_ranks(sloc_t sloc = sloc_t::current()) {
   int n_ranks;
   mpi_check(sloc, MPI_Comm_size, MPI_COMM_WORLD, &n_ranks);
   return n_ranks;
