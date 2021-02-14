@@ -2,7 +2,7 @@
 #include <cstdio>
 
 bool
-tiny_mpi::mpi_initialized(sloc_t sloc)
+tiny_mpi::initialized(sloc_t sloc)
   noexcept
 {
   int mpi_initialized;
@@ -15,7 +15,7 @@ tiny_mpi::mpi_initialized(sloc_t sloc)
 }
 
 bool
-tiny_mpi::mpi_finalized(sloc_t sloc)
+tiny_mpi::finalized(sloc_t sloc)
   noexcept
 {
   int mpi_finalized;
@@ -28,10 +28,10 @@ tiny_mpi::mpi_finalized(sloc_t sloc)
 }
 
 void
-tiny_mpi::mpi_init(sloc_t sloc)
+tiny_mpi::init(sloc_t sloc)
   noexcept
 {
-  if (mpi_initialized(sloc)) {
+  if (initialized(sloc)) {
     return;
   }
 
@@ -43,10 +43,10 @@ tiny_mpi::mpi_init(sloc_t sloc)
 }
 
 void
-tiny_mpi::mpi_fini(sloc_t sloc)
+tiny_mpi::fini(sloc_t sloc)
   noexcept
 {
-  if (!mpi_initialized(sloc)) {
+  if (!initialized(sloc)) {
     return;
   }
 
@@ -58,10 +58,10 @@ tiny_mpi::mpi_fini(sloc_t sloc)
 }
 
 void
-tiny_mpi::mpi_abort(int e, sloc_t sloc)
+tiny_mpi::abort(int e, sloc_t sloc)
   noexcept
 {
-  if (!mpi_initialized(sloc)) {
+  if (!initialized(sloc)) {
     fprintf(stderr, "%s:%s MPI_Abort called with error code (%d)\n",
             sloc.function_name(), sloc.line(), e);
     exit(EXIT_FAILURE);
@@ -74,7 +74,7 @@ tiny_mpi::mpi_abort(int e, sloc_t sloc)
 }
 
 void
-tiny_mpi::mpi_print_error(const char* f, int e, sloc_t sloc)
+tiny_mpi::print_error(const char* f, int e, sloc_t sloc)
   noexcept
 {
   char str[MPI_MAX_ERROR_STRING];
@@ -87,21 +87,21 @@ tiny_mpi::mpi_print_error(const char* f, int e, sloc_t sloc)
 }
 
 int
-tiny_mpi::mpi_probe(int source, int tag, MPI_Datatype type, sloc_t sloc)
+tiny_mpi::probe(int source, int tag, MPI_Datatype type, sloc_t sloc)
   noexcept
 {
   MPI_Status status;
-  mpi_check(sloc, MPI_Probe, source, tag, MPI_COMM_WORLD, &status);
+  check(sloc, MPI_Probe, source, tag, MPI_COMM_WORLD, &status);
 
   int n;
-  mpi_check(sloc, MPI_Get_count, &status, type, &n);
+  check(sloc, MPI_Get_count, &status, type, &n);
   return n;
 }
 
 void
-tiny_mpi::mpi_wait(std::span<MPI_Request> reqs, sloc_t sloc)
+tiny_mpi::wait(std::span<MPI_Request> reqs, sloc_t sloc)
   noexcept
 {
-  mpi_check(sloc, MPI_Waitall, ssize(reqs), reqs.data(), MPI_STATUSES_IGNORE);
+  check(sloc, MPI_Waitall, ssize(reqs), reqs.data(), MPI_STATUSES_IGNORE);
 }
 
