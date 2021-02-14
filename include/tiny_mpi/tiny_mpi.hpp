@@ -40,41 +40,41 @@ template <> constexpr MPI_Datatype mpi_type<long double>        = MPI_LONG_DOUBL
 
 /// Simple wrappers to check initialized and finalized.
 bool mpi_initialized(
-    sloc_t = sloc_t::current());                //!< debugging location
+    sloc_t = sloc_t::current()) noexcept;       //!< debugging location
 
 bool mpi_finalized(
-    sloc_t = sloc_t::current());                //!< debugging location
+    sloc_t = sloc_t::current()) noexcept;       //!< debugging location
 
 /// Simple wrappers, will check initialized and finalized.
 void mpi_init(
-    sloc_t = sloc_t::current());                //!< debugging location
+    sloc_t = sloc_t::current()) noexcept;       //!< debugging location
 
 void mpi_fini(
-    sloc_t = sloc_t::current());                //!< debugging location
+    sloc_t = sloc_t::current()) noexcept;       //!< debugging location
 
 /// Will `exit(EXIT_FAILURE)` if `!mpi_initialized()`.
 [[noreturn]]
 void mpi_abort(
     int e = -1,                                 //!< error code
-    sloc_t = sloc_t::current());                //!< debugging location
+    sloc_t = sloc_t::current()) noexcept;       //!< debugging location
 
 /// Will translate `e` to a string and print an error.
 void mpi_print_error(
     const char* symbol,                         //!< MPI_* as string
     int e,                                      //!< error code
-    sloc_t = sloc_t::current());                //!< debugging location
+    sloc_t = sloc_t::current()) noexcept;       //!< debugging location
 
 /// Returns the count for a matching message.
 int mpi_probe(
     int source,                                 //!< source rank
     int tag,                                    //!< user defined tag
     MPI_Datatype type,                          //!< type for count
-    sloc_t = sloc_t::current());                //!< debugging location
+    sloc_t = sloc_t::current()) noexcept;       //!< debugging location
 
 /// Blocks until all of the requests are complete, ignores status.
 void mpi_wait(
     std::span<MPI_Request> reqs,                //!< requests
-    sloc_t = sloc_t::current());                //!< debugging location
+    sloc_t = sloc_t::current()) noexcept;       //!< debugging location
 
 /// If op(ts...)->error, prints and error and aborts.
 template <class Op, class... Ts>
@@ -98,6 +98,11 @@ static inline int mpi_n_ranks(sloc_t sloc = sloc_t::current()) {
   int n_ranks;
   mpi_check(sloc, MPI_Comm_size, MPI_COMM_WORLD, &n_ranks);
   return n_ranks;
+}
+
+void mpi_wait(std::same_as<MPI_Request> auto... requests) {
+  MPI_Request rs[] = { requests... };
+  mpi_wait(rs);
 }
 
 template <class T>
@@ -137,6 +142,28 @@ MPI_Request mpi_allreduce(std::vector<T>& v, MPI_Op op = MPI_SUM, sloc_t sloc = 
   using std::ssize;
   return mpi_allreduce(data(v), ssize(v), op, sloc);
 }
+
+template <std::size_t N>
+struct mpi_async {
+  MPI_Request rs[N];
+
+  constexpr mpi_async(std::same_as<MPI_Request> auto... rs) noexcept : rs { rs... } {
+  }
+
+  constexpr ~mpi_async() {
+    mpi_wait(rs);
+  }
+};
+
+mpi_async(std::same_as<MPI_Request> auto... rs) -> mpi_async<sizeof...(rs)>;
+
+template <std::invocable Op>
+auto mpi_do_async(Op&& op, std::same_as<MPI_Request> auto... rs)
+  noexcept(noexcept(std::forward<Op>(op)))
+{
+  mpi_async _(rs...);
+  return std::forward<Op>(op);
 }
+} // namespace tiny_mpi
 
 #endif // TINY_MPI_CXX_INCLUDE_TINY_MPI_TINY_MPI_HPP

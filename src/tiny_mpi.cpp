@@ -3,6 +3,7 @@
 
 bool
 tiny_mpi::mpi_initialized(sloc_t sloc)
+  noexcept
 {
   int mpi_initialized;
   if (int e = MPI_Initialized(&mpi_initialized)) {
@@ -15,6 +16,7 @@ tiny_mpi::mpi_initialized(sloc_t sloc)
 
 bool
 tiny_mpi::mpi_finalized(sloc_t sloc)
+  noexcept
 {
   int mpi_finalized;
   if (int e = MPI_Finalized(&mpi_finalized)) {
@@ -27,6 +29,7 @@ tiny_mpi::mpi_finalized(sloc_t sloc)
 
 void
 tiny_mpi::mpi_init(sloc_t sloc)
+  noexcept
 {
   if (mpi_initialized(sloc)) {
     return;
@@ -41,6 +44,7 @@ tiny_mpi::mpi_init(sloc_t sloc)
 
 void
 tiny_mpi::mpi_fini(sloc_t sloc)
+  noexcept
 {
   if (!mpi_initialized(sloc)) {
     return;
@@ -55,6 +59,7 @@ tiny_mpi::mpi_fini(sloc_t sloc)
 
 void
 tiny_mpi::mpi_abort(int e, sloc_t sloc)
+  noexcept
 {
   if (!mpi_initialized(sloc)) {
     fprintf(stderr, "%s:%s MPI_Abort called with error code (%d)\n",
@@ -70,6 +75,7 @@ tiny_mpi::mpi_abort(int e, sloc_t sloc)
 
 void
 tiny_mpi::mpi_print_error(const char* f, int e, sloc_t sloc)
+  noexcept
 {
   char str[MPI_MAX_ERROR_STRING];
   int _;
@@ -82,6 +88,7 @@ tiny_mpi::mpi_print_error(const char* f, int e, sloc_t sloc)
 
 int
 tiny_mpi::mpi_probe(int source, int tag, MPI_Datatype type, sloc_t sloc)
+  noexcept
 {
   MPI_Status status;
   mpi_check(sloc, MPI_Probe, source, tag, MPI_COMM_WORLD, &status);
@@ -93,6 +100,7 @@ tiny_mpi::mpi_probe(int source, int tag, MPI_Datatype type, sloc_t sloc)
 
 void
 tiny_mpi::mpi_wait(std::span<MPI_Request> reqs, sloc_t sloc)
+  noexcept
 {
   mpi_check(sloc, MPI_Waitall, ssize(reqs), reqs.data(), MPI_STATUSES_IGNORE);
 }
