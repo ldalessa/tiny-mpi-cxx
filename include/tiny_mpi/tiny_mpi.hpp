@@ -55,7 +55,7 @@ void mpi_fini(
 /// Will `exit(EXIT_FAILURE)` if `!mpi_initialized()`.
 [[noreturn]]
 void mpi_abort(
-    int e,                                      //!< error code
+    int e = -1,                                 //!< error code
     sloc_t = sloc_t::current());                //!< debugging location
 
 /// Will translate `e` to a string and print an error.
@@ -87,6 +87,18 @@ void mpi_check_op(sloc_t sloc, const char* symbol, Op&& op, Ts&&... ts) {
 
 /// Helper macro for mpi_check_op.
 #define mpi_check(sloc, op, ...) mpi_check_op(sloc, #op, (op), __VA_ARGS__)
+
+int mpi_rank(sloc_t sloc = sloc_t::current()) {
+  int rank;
+  mpi_check(sloc, MPI_Comm_rank, MPI_COMM_WORLD, &rank);
+  return rank;
+}
+
+int mpi_n_ranks(sloc_t sloc = sloc_t::current()) {
+  int n_ranks;
+  mpi_check(sloc, MPI_Comm_size, MPI_COMM_WORLD, &n_ranks);
+  return n_ranks;
+}
 
 template <class T>
 int mpi_probe(int source, int tag = 0, sloc_t sloc = sloc_t::current()) {
