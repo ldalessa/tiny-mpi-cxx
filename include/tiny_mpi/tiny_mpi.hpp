@@ -196,8 +196,8 @@ namespace tiny_mpi
   [[nodiscard]]
   auto allgather(
     std::span<T> values,
-    std::span<int> counts,
-    std::span<int> offsets,
+    std::span<int const> counts,
+    std::span<int const> offsets,
     sloc_t sloc = sloc_t::current()) -> MPI_Request
   {
     MPI_Request r;

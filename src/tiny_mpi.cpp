@@ -104,4 +104,3 @@ tiny_mpi::wait(std::span<MPI_Request> reqs, sloc_t sloc)
 {
   check(sloc, tiny_mpi_op(MPI_Waitall), ssize(reqs), reqs.data(), MPI_STATUSES_IGNORE);
 }
-
