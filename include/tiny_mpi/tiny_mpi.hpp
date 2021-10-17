@@ -13,6 +13,8 @@
 #include <vector>
 #include <mpi.h>
 
+#define TINY_MPI_FWD(x) static_cast<decltype(x)&&>(x)
+
 namespace tiny_mpi
 {
 
@@ -79,24 +81,31 @@ namespace tiny_mpi
     std::span<MPI_Request> reqs,                //!< requests
     sloc_t = sloc_t::current()) noexcept;       //!< debugging location
 
-  /// If op(ts...)->error, prints and error and aborts.
-  template <class Op, class... Ts>
-  void check_op(sloc_t sloc, const char* symbol, Op&& op, Ts&&... ts) {
-    if (int e = std::forward<Op>(op)(std::forward<Ts>(ts)...)) {
-      print_error(symbol, e, sloc);
-      abort(e, sloc);
+  /// If f(ts...)->error, prints and error and aborts.
+  inline constexpr struct
+  {
+    constexpr void operator()(
+      sloc_t sloc,
+      const char* symbol,
+      auto&& f,
+      auto&&... ts) const
+    {
+      if (int e = TINY_MPI_FWD(f)(TINY_MPI_FWD(ts)...)) {
+        print_error(symbol, e, sloc);
+        abort(e, sloc);
+      }
     }
-  }
+  } check;
 
-  /// Helper macro for check_op.
-#define check(sloc, op, ...) check_op(sloc, #op, (op), __VA_ARGS__)
+  /// Helper macro for check
+#define tiny_mpi_op(op) #op, (op)
 
   [[nodiscard]]
   static inline auto rank(sloc_t sloc = sloc_t::current())
     -> int
   {
     int rank;
-    check(sloc, MPI_Comm_rank, MPI_COMM_WORLD, &rank);
+    check(sloc, tiny_mpi_op(MPI_Comm_rank), MPI_COMM_WORLD, &rank);
     return rank;
   }
 
@@ -105,7 +114,7 @@ namespace tiny_mpi
     -> int
   {
     int n_ranks;
-    check(sloc, MPI_Comm_size, MPI_COMM_WORLD, &n_ranks);
+    check(sloc, tiny_mpi_op(MPI_Comm_size), MPI_COMM_WORLD, &n_ranks);
     return n_ranks;
   }
 
@@ -114,7 +123,7 @@ namespace tiny_mpi
     -> MPI_Request
   {
     MPI_Request r;
-    check(sloc, MPI_Ibarrier, MPI_COMM_WORLD, &r);
+    check(sloc, tiny_mpi_op(MPI_Ibarrier), MPI_COMM_WORLD, &r);
     return r;
   }
 
@@ -143,7 +152,7 @@ namespace tiny_mpi
     sloc_t sloc = sloc_t::current()) -> MPI_Request
   {
     MPI_Request r;
-    check(sloc, MPI_Isend, from, n, type<T>, to_rank, tag, MPI_COMM_WORLD, &r);
+    check(sloc, tiny_mpi_op(MPI_Isend), from, n, type<T>, to_rank, tag, MPI_COMM_WORLD, &r);
     return r;
   }
 
@@ -156,7 +165,7 @@ namespace tiny_mpi
     sloc_t sloc = sloc_t::current()) -> MPI_Request
   {
     MPI_Request r;
-    check(sloc, MPI_Irecv, to, n, type<T>, from_rank, tag, MPI_COMM_WORLD, &r);
+    check(sloc, tiny_mpi_op(MPI_Irecv), to, n, type<T>, from_rank, tag, MPI_COMM_WORLD, &r);
     return r;
   }
 
@@ -169,7 +178,7 @@ namespace tiny_mpi
     sloc_t sloc = sloc_t::current()) -> MPI_Request
   {
     MPI_Request r;
-    check(sloc, MPI_Iallreduce, MPI_IN_PLACE, buffer, n, type<T>, op, MPI_COMM_WORLD, &r);
+    check(sloc, tiny_mpi_op(MPI_Iallreduce), MPI_IN_PLACE, buffer, n, type<T>, op, MPI_COMM_WORLD, &r);
     return r;
   }
 

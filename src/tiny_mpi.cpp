@@ -91,10 +91,10 @@ tiny_mpi::probe(int source, int tag, MPI_Datatype type, sloc_t sloc)
   noexcept
 {
   MPI_Status status;
-  check(sloc, MPI_Probe, source, tag, MPI_COMM_WORLD, &status);
+  check(sloc, tiny_mpi_op(MPI_Probe), source, tag, MPI_COMM_WORLD, &status);
 
   int n;
-  check(sloc, MPI_Get_count, &status, type, &n);
+  check(sloc, tiny_mpi_op(MPI_Get_count), &status, type, &n);
   return n;
 }
 
@@ -102,6 +102,6 @@ void
 tiny_mpi::wait(std::span<MPI_Request> reqs, sloc_t sloc)
   noexcept
 {
-  check(sloc, MPI_Waitall, ssize(reqs), reqs.data(), MPI_STATUSES_IGNORE);
+  check(sloc, tiny_mpi_op(MPI_Waitall), ssize(reqs), reqs.data(), MPI_STATUSES_IGNORE);
 }
 
