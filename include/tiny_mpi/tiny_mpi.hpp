@@ -189,8 +189,31 @@ namespace tiny_mpi
     MPI_Op op = MPI_SUM,
     sloc_t sloc = sloc_t::current()) -> MPI_Request
   {
-    using std::ssize;
     return allreduce(data(v), ssize(v), op, sloc);
+  }
+
+  template <class T>
+  [[nodiscard]]
+  auto allgather(
+    std::span<T> values,
+    std::span<int> counts,
+    std::span<int> offsets,
+    sloc_t sloc = sloc_t::current()) -> MPI_Request
+  {
+    MPI_Request r;
+    check(
+      sloc,
+      tiny_mpi_op(MPI_Iallgatherv),
+      MPI_IN_PLACE,
+      0,
+      MPI_DATATYPE_NULL,
+      data(values),
+      data(counts),
+      data(offsets),
+      type<T>,
+      MPI_COMM_WORLD,
+      &r);
+    return r;
   }
 
   template <std::size_t N>
