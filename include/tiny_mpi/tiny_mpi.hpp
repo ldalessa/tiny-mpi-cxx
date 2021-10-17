@@ -9,6 +9,7 @@
 #include <experimental/source_location>
 #endif
 
+#include <ranges>
 #include <span>
 #include <vector>
 #include <mpi.h>
@@ -192,10 +193,10 @@ namespace tiny_mpi
     return allreduce(data(v), ssize(v), op, sloc);
   }
 
-  template <class T>
+  template <std::ranges::contiguous_range Range>
   [[nodiscard]]
   auto allgather(
-    T* values,
+    Range& values,
     std::span<int const> counts,
     std::span<int const> offsets,
     sloc_t sloc = sloc_t::current()) -> MPI_Request
@@ -207,10 +208,10 @@ namespace tiny_mpi
       MPI_IN_PLACE,
       0,
       MPI_DATATYPE_NULL,
-      values,
+      std::ranges::data(values),
       data(counts),
       data(offsets),
-      type<T>,
+      type<std::ranges::range_value_t<Range>>,
       MPI_COMM_WORLD,
       &r);
     return r;
