@@ -197,6 +197,7 @@ namespace tiny_mpi
   }
 
   template <class T>
+  [[nodiscard]]
   auto allgather(
     T* values,
     std::span<int const> counts,
