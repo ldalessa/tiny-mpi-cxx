@@ -25,6 +25,8 @@ namespace tiny_mpi
   using sloc_t = std::experimental::source_location;
 #endif
 
+  using Request = MPI_Request;
+
   /// Simple variadic template to map arithmatic types to their MPI equivalents.
   template <class T> constexpr MPI_Datatype type = not defined(type<T>);
   template <> constexpr MPI_Datatype type<std::byte>          = MPI_BYTE;
@@ -79,7 +81,7 @@ namespace tiny_mpi
 
   /// Blocks until all of the requests are complete, ignores status.
   void wait(
-    std::span<MPI_Request> reqs,                //!< requests
+    std::span<Request> reqs,                    //!< requests
     sloc_t = sloc_t::current()) noexcept;       //!< debugging location
 
   /// If f(ts...)->error, prints and error and aborts.
@@ -121,15 +123,15 @@ namespace tiny_mpi
 
   [[nodiscard]]
   static inline auto barrier(sloc_t sloc = sloc_t::current())
-    -> MPI_Request
+    -> Request
   {
-    MPI_Request r;
+    Request r;
     check(sloc, tiny_mpi_op(MPI_Ibarrier), MPI_COMM_WORLD, &r);
     return r;
   }
 
-  void wait(std::same_as<MPI_Request> auto... requests) {
-    MPI_Request rs[] = { requests... };
+  void wait(std::same_as<Request> auto... requests) {
+    Request rs[] = { requests... };
     wait(rs);
   }
 
@@ -150,9 +152,9 @@ namespace tiny_mpi
     int n,
     int to_rank,
     int tag = 0,
-    sloc_t sloc = sloc_t::current()) -> MPI_Request
+    sloc_t sloc = sloc_t::current()) -> Request
   {
-    MPI_Request r;
+    Request r;
     check(sloc, tiny_mpi_op(MPI_Isend), from, n, type<T>, to_rank, tag, MPI_COMM_WORLD, &r);
     return r;
   }
@@ -161,11 +163,12 @@ namespace tiny_mpi
   [[nodiscard]]
   auto recv(
     T* to,
-    int n, int from_rank,
+    int n,
+    int from_rank,
     int tag = 0,
-    sloc_t sloc = sloc_t::current()) -> MPI_Request
+    sloc_t sloc = sloc_t::current()) -> Request
   {
-    MPI_Request r;
+    Request r;
     check(sloc, tiny_mpi_op(MPI_Irecv), to, n, type<T>, from_rank, tag, MPI_COMM_WORLD, &r);
     return r;
   }
@@ -176,9 +179,9 @@ namespace tiny_mpi
     T* buffer,
     int n,
     MPI_Op op = MPI_SUM,
-    sloc_t sloc = sloc_t::current()) -> MPI_Request
+    sloc_t sloc = sloc_t::current()) -> Request
   {
-    MPI_Request r;
+    Request r;
     check(sloc, tiny_mpi_op(MPI_Iallreduce), MPI_IN_PLACE, buffer, n, type<T>, op, MPI_COMM_WORLD, &r);
     return r;
   }
@@ -188,9 +191,32 @@ namespace tiny_mpi
   auto allreduce(
     std::vector<T>& v,
     MPI_Op op = MPI_SUM,
-    sloc_t sloc = sloc_t::current()) -> MPI_Request
+    sloc_t sloc = sloc_t::current()) -> Request
   {
     return allreduce(data(v), ssize(v), op, sloc);
+  }
+
+  template <class T>
+  auto allgather(
+    T* values,
+    std::span<int const> counts,
+    std::span<int const> offsets,
+    sloc_t sloc = sloc_t::current()) -> Request
+  {
+    Request r;
+    check(
+      sloc,
+      tiny_mpi_op(MPI_Iallgatherv),
+      MPI_IN_PLACE,
+      0,
+      MPI_DATATYPE_NULL,
+      values,
+      data(counts),
+      data(offsets),
+      type<T>,
+      MPI_COMM_WORLD,
+      &r);
+    return r;
   }
 
   template <std::ranges::contiguous_range Range>
@@ -199,29 +225,16 @@ namespace tiny_mpi
     Range& values,
     std::span<int const> counts,
     std::span<int const> offsets,
-    sloc_t sloc = sloc_t::current()) -> MPI_Request
+    sloc_t sloc = sloc_t::current()) -> Request
   {
-    MPI_Request r;
-    check(
-      sloc,
-      tiny_mpi_op(MPI_Iallgatherv),
-      MPI_IN_PLACE,
-      0,
-      MPI_DATATYPE_NULL,
-      std::ranges::data(values),
-      data(counts),
-      data(offsets),
-      type<std::ranges::range_value_t<Range>>,
-      MPI_COMM_WORLD,
-      &r);
-    return r;
+    return allgather(std::ranges::data(values), counts, offsets, sloc);
   }
 
   template <std::size_t N>
   struct async {
-    MPI_Request rs[N];
+    Request rs[N];
 
-    constexpr async(std::same_as<MPI_Request> auto... rs) noexcept : rs { rs... } {
+    constexpr async(std::same_as<Request> auto... rs) noexcept : rs { rs... } {
     }
 
     constexpr ~async() {
@@ -229,7 +242,7 @@ namespace tiny_mpi
     }
   };
 
-  async(std::same_as<MPI_Request> auto... rs) -> async<sizeof...(rs)>;
+  async(std::same_as<Request> auto... rs) -> async<sizeof...(rs)>;
 } // namespace tiny_mpi
 
 #endif // TINY_MPI_CXX_INCLUDE_TINY_MPI_TINY_MPI_HPP
