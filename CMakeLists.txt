@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.12)
 project(tiny_mpi_cxx LANGUAGES CXX)
 
 find_package(MPI REQUIRED)
