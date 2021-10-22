@@ -150,7 +150,7 @@ namespace tiny_mpi
         int tag = 0,
         sloc_t sloc = sloc_t::current()) -> int
     {
-        return probe(source, tag, type<T>, sloc);
+        return probe(source, type<T>, tag, sloc);
     }
 
     template <trivial_type T>
@@ -160,7 +160,7 @@ namespace tiny_mpi
         int tag = 0,
         sloc_t sloc = sloc_t::current()) -> int
     {
-        return probe(source, tag, type<char>, sloc) / sizeof(T);
+        return probe(source, type<char>, tag, sloc) / sizeof(T);
     }
 
     template <integral_type T>
