@@ -48,8 +48,10 @@ namespace tiny_mpi
     template <> constexpr MPI_Datatype type<long double>        = MPI_LONG_DOUBLE;
 
     template <class T>
-    concept integral_type = std::same_as<decltype(type<T>), MPI_Datatype>;
+    concept trivial_type = std::is_trivial_v<T>;
 
+    template <class T>
+    concept integral_type = trivial_type<T> and std::same_as<decltype(type<T>), MPI_Datatype>;
 
     /// Simple wrappers to check initialized and finalized.
     bool initialized(
@@ -141,7 +143,7 @@ namespace tiny_mpi
         wait(rs);
     }
 
-    template <class T>
+    template <integral_type T>
     [[nodiscard]]
     auto probe(
         int source,
@@ -149,6 +151,16 @@ namespace tiny_mpi
         sloc_t sloc = sloc_t::current()) -> int
     {
         return probe(source, tag, type<T>, sloc);
+    }
+
+    template <trivial_type T>
+    [[nodiscard]]
+    auto probe(
+        int source,
+        int tag = 0,
+        sloc_t sloc = sloc_t::current()) -> int
+    {
+        return probe(source, tag, type<char>, sloc) / sizeof(T);
     }
 
     template <integral_type T>
@@ -165,7 +177,7 @@ namespace tiny_mpi
         return r;
     }
 
-    template <class T>
+    template <trivial_type T>
     [[nodiscard]]
     auto send(
         const T* from,
@@ -174,7 +186,6 @@ namespace tiny_mpi
         int tag = 0,
         sloc_t sloc = sloc_t::current()) -> Request
     {
-        static_assert(std::is_trivial_v<T>);
         Request r;
         check(sloc, tiny_mpi_op(MPI_Isend), from, sizeof(T) * n, type<char>, to_rank, tag, MPI_COMM_WORLD, &r);
         return r;
@@ -209,7 +220,7 @@ namespace tiny_mpi
         return r;
     }
 
-    template <class T>
+    template <trivial_type T>
     [[nodiscard]]
     auto recv(
         T* to,
@@ -218,7 +229,6 @@ namespace tiny_mpi
         int tag = 0,
         sloc_t sloc = sloc_t::current()) -> Request
     {
-        static_assert(std::is_trivial_v<T>);
         Request r;
         check(sloc, tiny_mpi_op(MPI_Irecv), to, sizeof(T) * n, type<char>, from_rank, tag, MPI_COMM_WORLD, &r);
         return r;
