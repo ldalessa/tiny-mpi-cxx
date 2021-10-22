@@ -138,8 +138,8 @@ namespace tiny_mpi
         return r;
     }
 
-    void wait(std::same_as<Request> auto... requests) {
-        Request rs[] = { requests... };
+    void wait(Request first, std::same_as<Request> auto... rest) {
+        Request rs[] = { first, rest... };
         wait(rs);
     }
 
