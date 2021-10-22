@@ -1,6 +1,8 @@
 #ifndef TINY_MPI_CXX_INCLUDE_TINY_MPI_TINY_MPI_HPP
 #define TINY_MPI_CXX_INCLUDE_TINY_MPI_TINY_MPI_HPP
 
+#include <mpi.h>
+
 #include <version>
 
 #ifdef __cpp_lib_source_location
@@ -9,10 +11,10 @@
 #include <experimental/source_location>
 #endif
 
+#include <concepts>
 #include <ranges>
 #include <span>
 #include <vector>
-#include <mpi.h>
 
 #define TINY_MPI_FWD(x) static_cast<decltype(x)&&>(x)
 
@@ -28,7 +30,7 @@ namespace tiny_mpi
     using Request = MPI_Request;
 
     /// Simple variadic template to map arithmatic types to their MPI equivalents.
-    template <class T> constexpr MPI_Datatype type = not defined(type<T>);
+    template <class T> constexpr std::false_type type = {};
     template <> constexpr MPI_Datatype type<std::byte>          = MPI_BYTE;
     template <> constexpr MPI_Datatype type<char>               = MPI_CHAR;
     template <> constexpr MPI_Datatype type<signed char>        = MPI_CHAR;
@@ -44,6 +46,10 @@ namespace tiny_mpi
     template <> constexpr MPI_Datatype type<float>              = MPI_FLOAT;
     template <> constexpr MPI_Datatype type<double>             = MPI_DOUBLE;
     template <> constexpr MPI_Datatype type<long double>        = MPI_LONG_DOUBLE;
+
+    template <class T>
+    concept integral_type = std::same_as<decltype(type<T>), MPI_Datatype>;
+
 
     /// Simple wrappers to check initialized and finalized.
     bool initialized(
@@ -145,7 +151,7 @@ namespace tiny_mpi
         return probe(source, tag, type<T>, sloc);
     }
 
-    template <class T>
+    template <integral_type T>
     [[nodiscard]]
     auto send(
         const T* from,
@@ -159,6 +165,21 @@ namespace tiny_mpi
         return r;
     }
 
+    template <class T>
+    [[nodiscard]]
+    auto send(
+        const T* from,
+        int n,
+        int to_rank,
+        int tag = 0,
+        sloc_t sloc = sloc_t::current()) -> Request
+    {
+        static_assert(std::is_trivial_v<T>);
+        Request r;
+        check(sloc, tiny_mpi_op(MPI_Isend), from, sizeof(T) * n, type<char>, to_rank, tag, MPI_COMM_WORLD, &r);
+        return r;
+    }
+
     [[nodiscard]]
     auto send(
         std::ranges::contiguous_range auto const& from,
@@ -167,14 +188,14 @@ namespace tiny_mpi
         sloc_t sloc = sloc_t::current()) -> Request
     {
         return send(
-            std::ranges::begin(from),
+            std::ranges::data(from),
             std::ranges::size(from),
             to_rank,
             tag,
             std::move(sloc));
     }
 
-    template <class T>
+    template <integral_type T>
     [[nodiscard]]
     auto recv(
         T* to,
@@ -188,6 +209,21 @@ namespace tiny_mpi
         return r;
     }
 
+    template <class T>
+    [[nodiscard]]
+    auto recv(
+        T* to,
+        int n,
+        int from_rank,
+        int tag = 0,
+        sloc_t sloc = sloc_t::current()) -> Request
+    {
+        static_assert(std::is_trivial_v<T>);
+        Request r;
+        check(sloc, tiny_mpi_op(MPI_Irecv), to, sizeof(T) * n, type<char>, from_rank, tag, MPI_COMM_WORLD, &r);
+        return r;
+    }
+
     [[nodiscard]]
     auto recv(
         std::ranges::contiguous_range auto& to,
@@ -196,7 +232,7 @@ namespace tiny_mpi
         sloc_t sloc = sloc_t::current()) -> Request
     {
         return recv(
-            std::ranges::begin(to),
+            std::ranges::data(to),
             std::ranges::size(to),
             from_rank,
             tag,
