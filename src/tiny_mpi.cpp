@@ -87,7 +87,7 @@ tiny_mpi::print_error(const char* f, int e, sloc_t sloc)
 }
 
 int
-tiny_mpi::probe(int source, int tag, MPI_Datatype type, sloc_t sloc)
+tiny_mpi::probe(int source, MPI_Datatype type, int tag, sloc_t sloc)
   noexcept
 {
   MPI_Status status;

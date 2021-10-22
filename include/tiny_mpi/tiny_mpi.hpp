@@ -75,8 +75,8 @@ namespace tiny_mpi
     [[nodiscard]]
     auto probe(
         int source,                                  //!< source rank
-        int tag,                                     //!< user defined tag
         MPI_Datatype type,                           //!< type for count
+        int tag = 0,                                 //!< user defined tag
         sloc_t = sloc_t::current()) noexcept -> int; //!< debugging location
 
     /// Blocks until all of the requests are complete, ignores status.
