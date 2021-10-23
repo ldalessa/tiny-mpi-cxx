@@ -12,6 +12,7 @@
 #endif
 
 #include <concepts>
+#include <functional>
 #include <ranges>
 #include <span>
 #include <vector>
@@ -29,7 +30,7 @@ namespace tiny_mpi
 
     using Request = MPI_Request;
 
-    /// Simple variadic template to map arithmatic types to their MPI equivalents.
+    /// Simple variable template to map arithmatic types to their MPI equivalents.
     template <class T> constexpr std::false_type type = {};
     template <> constexpr MPI_Datatype type<std::byte>          = MPI_BYTE;
     template <> constexpr MPI_Datatype type<char>               = MPI_CHAR;
@@ -51,7 +52,34 @@ namespace tiny_mpi
     concept trivial_type = std::is_trivial_v<T>;
 
     template <class T>
-    concept integral_type = trivial_type<T> and std::same_as<decltype(type<T>), MPI_Datatype>;
+    concept integral_type = trivial_type<T> and std::same_as<decltype(type<T>), const MPI_Datatype>;
+
+    struct min {
+        constexpr auto operator()(auto a, auto b) noexcept {
+            return std::min(a, b);
+        }
+    };
+
+    struct max {
+        constexpr auto operator()(auto a, auto b) noexcept {
+            return std::min(a, b);
+        }
+    };
+
+    /// Simple variable template to map the common reduction operators.
+    template <class T> constexpr std::false_type op = {};
+    template <> constexpr MPI_Op op<min> = MPI_MIN;
+    template <> constexpr MPI_Op op<max> = MPI_MAX;
+    template <class T> constexpr MPI_Op op<std::plus<T>>        = MPI_SUM;
+    template <class T> constexpr MPI_Op op<std::multiplies<T>>  = MPI_PROD;
+    template <class T> constexpr MPI_Op op<std::bit_or<T>>      = MPI_BOR;
+    template <class T> constexpr MPI_Op op<std::bit_and<T>>     = MPI_BAND;
+    template <class T> constexpr MPI_Op op<std::bit_xor<T>>     = MPI_BXOR;
+    template <class T> constexpr MPI_Op op<std::logical_or<T>>  = MPI_LOR;
+    template <class T> constexpr MPI_Op op<std::logical_and<T>> = MPI_LAND;
+
+    template <class T>
+    concept reduction_op = std::same_as<decltype(op<T>), const MPI_Op>;
 
     /// Simple wrappers to check initialized and finalized.
     bool initialized(
@@ -109,14 +137,14 @@ namespace tiny_mpi
     } check;
 
     /// Helper macro for check
-#define tiny_mpi_op(op) #op, (op)
+#define tiny_mpi_check_op(op) #op, (op)
 
     [[nodiscard]]
     static inline auto rank(sloc_t sloc = sloc_t::current())
         -> int
     {
         int rank;
-        check(sloc, tiny_mpi_op(MPI_Comm_rank), MPI_COMM_WORLD, &rank);
+        check(sloc, tiny_mpi_check_op(MPI_Comm_rank), MPI_COMM_WORLD, &rank);
         return rank;
     }
 
@@ -125,7 +153,7 @@ namespace tiny_mpi
         -> int
     {
         int n_ranks;
-        check(sloc, tiny_mpi_op(MPI_Comm_size), MPI_COMM_WORLD, &n_ranks);
+        check(sloc, tiny_mpi_check_op(MPI_Comm_size), MPI_COMM_WORLD, &n_ranks);
         return n_ranks;
     }
 
@@ -134,7 +162,7 @@ namespace tiny_mpi
         -> Request
     {
         Request r;
-        check(sloc, tiny_mpi_op(MPI_Ibarrier), MPI_COMM_WORLD, &r);
+        check(sloc, tiny_mpi_check_op(MPI_Ibarrier), MPI_COMM_WORLD, &r);
         return r;
     }
 
@@ -173,7 +201,7 @@ namespace tiny_mpi
         sloc_t sloc = sloc_t::current()) -> Request
     {
         Request r;
-        check(sloc, tiny_mpi_op(MPI_Isend), from, n, type<T>, to_rank, tag, MPI_COMM_WORLD, &r);
+        check(sloc, tiny_mpi_check_op(MPI_Isend), from, n, type<T>, to_rank, tag, MPI_COMM_WORLD, &r);
         return r;
     }
 
@@ -187,7 +215,7 @@ namespace tiny_mpi
         sloc_t sloc = sloc_t::current()) -> Request
     {
         Request r;
-        check(sloc, tiny_mpi_op(MPI_Isend), from, sizeof(T) * n, type<char>, to_rank, tag, MPI_COMM_WORLD, &r);
+        check(sloc, tiny_mpi_check_op(MPI_Isend), from, sizeof(T) * n, type<char>, to_rank, tag, MPI_COMM_WORLD, &r);
         return r;
     }
 
@@ -216,7 +244,7 @@ namespace tiny_mpi
         sloc_t sloc = sloc_t::current()) -> Request
     {
         Request r;
-        check(sloc, tiny_mpi_op(MPI_Irecv), to, n, type<T>, from_rank, tag, MPI_COMM_WORLD, &r);
+        check(sloc, tiny_mpi_check_op(MPI_Irecv), to, n, type<T>, from_rank, tag, MPI_COMM_WORLD, &r);
         return r;
     }
 
@@ -230,7 +258,7 @@ namespace tiny_mpi
         sloc_t sloc = sloc_t::current()) -> Request
     {
         Request r;
-        check(sloc, tiny_mpi_op(MPI_Irecv), to, sizeof(T) * n, type<char>, from_rank, tag, MPI_COMM_WORLD, &r);
+        check(sloc, tiny_mpi_check_op(MPI_Irecv), to, sizeof(T) * n, type<char>, from_rank, tag, MPI_COMM_WORLD, &r);
         return r;
     }
 
@@ -258,19 +286,33 @@ namespace tiny_mpi
         sloc_t sloc = sloc_t::current()) -> Request
     {
         Request r;
-        check(sloc, tiny_mpi_op(MPI_Iallreduce), MPI_IN_PLACE, buffer, n, type<T>, op, MPI_COMM_WORLD, &r);
+        check(sloc, tiny_mpi_check_op(MPI_Iallreduce), MPI_IN_PLACE, buffer, n, type<T>, op, MPI_COMM_WORLD, &r);
         return r;
     }
 
-    template <class T>
     [[nodiscard]]
     auto allreduce(
-        std::vector<T>& v,
+        std::ranges::contiguous_range auto& v,
         MPI_Op op = MPI_SUM,
         sloc_t sloc = sloc_t::current()) -> Request
     {
-        return allreduce(data(v), ssize(v), op, sloc);
+        return allreduce(
+            std::ranges::data(v),
+            std::ranges::size(v),
+            op,
+            sloc);
     }
+
+    template <reduction_op Op>
+    [[nodiscard]]
+    auto allreduce(
+        std::ranges::contiguous_range auto& v,
+        Op,
+        sloc_t sloc = sloc_t::current()) -> Request
+    {
+        return allreduce(v, op<Op>, sloc);
+    }
+
 
     template <class T>
     [[nodiscard]]
@@ -283,7 +325,7 @@ namespace tiny_mpi
         Request r;
         check(
             sloc,
-            tiny_mpi_op(MPI_Iallgatherv),
+            tiny_mpi_check_op(MPI_Iallgatherv),
             MPI_IN_PLACE,
             0,
             MPI_DATATYPE_NULL,
