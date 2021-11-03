@@ -158,6 +158,12 @@ namespace tiny_mpi
     }
 
     [[nodiscard]]
+    static inline auto ranks(sloc_t sloc = sloc_t::current())
+    {
+        return std::ranges::iota_view{0, n_ranks(std::move(sloc))};
+    }
+
+    [[nodiscard]]
     static inline auto barrier(sloc_t sloc = sloc_t::current())
         -> Request
     {
