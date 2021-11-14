@@ -87,7 +87,7 @@ tiny_mpi::print_error(const char* f, int e, sloc_t sloc)
 }
 
 int
-tiny_mpi::probe(int source, MPI_Datatype type, int tag, sloc_t sloc)
+tiny_mpi::probe(rank_t source, MPI_Datatype type, tag_t tag, sloc_t sloc)
   noexcept
 {
   MPI_Status status;
@@ -99,7 +99,7 @@ tiny_mpi::probe(int source, MPI_Datatype type, int tag, sloc_t sloc)
 }
 
 void
-tiny_mpi::wait(std::span<Request> reqs, sloc_t sloc)
+tiny_mpi::wait(std::span<request_t> reqs, sloc_t sloc)
   noexcept
 {
   check(sloc, tiny_mpi_check_op(MPI_Waitall), ssize(reqs), data(reqs), MPI_STATUSES_IGNORE);

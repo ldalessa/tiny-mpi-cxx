@@ -28,7 +28,9 @@ namespace tiny_mpi
     using sloc_t = std::experimental::source_location;
 #endif
 
-    using Request = MPI_Request;
+    using request_t = MPI_Request;
+    using rank_t = int;
+    using tag_t = int;
 
     /// Simple variable template to map arithmatic types to their MPI equivalents.
     template <class T> constexpr std::false_type type = {};
@@ -110,14 +112,14 @@ namespace tiny_mpi
     /// Returns the count for a matching message.
     [[nodiscard]]
     auto probe(
-        int source,                                  //!< source rank
+        rank_t source,                               //!< source rank
         MPI_Datatype type,                           //!< type for count
-        int tag = 0,                                 //!< user defined tag
+        tag_t tag = 0,                               //!< user defined tag
         sloc_t = sloc_t::current()) noexcept -> int; //!< debugging location
 
     /// Blocks until all of the requests are complete, ignores status.
     void wait(
-        std::span<Request> reqs,                    //!< requests
+        std::span<request_t> reqs,              //!< requests
         sloc_t = sloc_t::current()) noexcept;       //!< debugging location
 
     /// If f(ts...)->error, prints and error and aborts.
@@ -141,18 +143,18 @@ namespace tiny_mpi
 
     [[nodiscard]]
     static inline auto rank(sloc_t sloc = sloc_t::current())
-        -> int
+        -> rank_t
     {
-        int rank;
+        rank_t rank;
         check(sloc, tiny_mpi_check_op(MPI_Comm_rank), MPI_COMM_WORLD, &rank);
         return rank;
     }
 
     [[nodiscard]]
     static inline auto n_ranks(sloc_t sloc = sloc_t::current())
-        -> int
+        -> rank_t
     {
-        int n_ranks;
+        rank_t n_ranks;
         check(sloc, tiny_mpi_check_op(MPI_Comm_size), MPI_COMM_WORLD, &n_ranks);
         return n_ranks;
     }
@@ -165,23 +167,23 @@ namespace tiny_mpi
 
     [[nodiscard]]
     static inline auto barrier(sloc_t sloc = sloc_t::current())
-        -> Request
+        -> request_t
     {
-        Request r;
+        request_t r;
         check(sloc, tiny_mpi_check_op(MPI_Ibarrier), MPI_COMM_WORLD, &r);
         return r;
     }
 
-    void wait(Request first, std::same_as<Request> auto... rest) {
-        Request rs[] = { first, rest... };
+    void wait(request_t first, std::same_as<request_t> auto... rest) {
+        request_t rs[] = { first, rest... };
         wait(rs);
     }
 
     template <integral_type T>
     [[nodiscard]]
     auto probe(
-        int source,
-        int tag = 0,
+        rank_t source,
+        tag_t tag = 0,
         sloc_t sloc = sloc_t::current()) -> int
     {
         return probe(source, type<T>, tag, sloc);
@@ -190,8 +192,8 @@ namespace tiny_mpi
     template <trivial_type T>
     [[nodiscard]]
     auto probe(
-        int source,
-        int tag = 0,
+        rank_t source,
+        tag_t tag = 0,
         sloc_t sloc = sloc_t::current()) -> int
     {
         return probe(source, type<char>, tag, sloc) / sizeof(T);
@@ -202,11 +204,11 @@ namespace tiny_mpi
     auto send(
         const T* from,
         int n,
-        int to_rank,
-        int tag = 0,
-        sloc_t sloc = sloc_t::current()) -> Request
+        rank_t to_rank,
+        tag_t tag = 0,
+        sloc_t sloc = sloc_t::current()) -> request_t
     {
-        Request r;
+        request_t r;
         check(sloc, tiny_mpi_check_op(MPI_Isend), from, n, type<T>, to_rank, tag, MPI_COMM_WORLD, &r);
         return r;
     }
@@ -216,11 +218,11 @@ namespace tiny_mpi
     auto send(
         const T* from,
         int n,
-        int to_rank,
-        int tag = 0,
-        sloc_t sloc = sloc_t::current()) -> Request
+        rank_t to_rank,
+        tag_t tag = 0,
+        sloc_t sloc = sloc_t::current()) -> request_t
     {
-        Request r;
+        request_t r;
         check(sloc, tiny_mpi_check_op(MPI_Isend), from, sizeof(T) * n, type<char>, to_rank, tag, MPI_COMM_WORLD, &r);
         return r;
     }
@@ -228,9 +230,9 @@ namespace tiny_mpi
     [[nodiscard]]
     auto send(
         std::ranges::contiguous_range auto const& from,
-        int to_rank,
-        int tag = 0,
-        sloc_t sloc = sloc_t::current()) -> Request
+        rank_t to_rank,
+        tag_t tag = 0,
+        sloc_t sloc = sloc_t::current()) -> request_t
     {
         return send(
             std::ranges::data(from),
@@ -245,11 +247,11 @@ namespace tiny_mpi
     auto recv(
         T* to,
         int n,
-        int from_rank,
-        int tag = 0,
-        sloc_t sloc = sloc_t::current()) -> Request
+        rank_t from_rank,
+        tag_t tag = 0,
+        sloc_t sloc = sloc_t::current()) -> request_t
     {
-        Request r;
+        request_t r;
         check(sloc, tiny_mpi_check_op(MPI_Irecv), to, n, type<T>, from_rank, tag, MPI_COMM_WORLD, &r);
         return r;
     }
@@ -259,11 +261,11 @@ namespace tiny_mpi
     auto recv(
         T* to,
         int n,
-        int from_rank,
-        int tag = 0,
-        sloc_t sloc = sloc_t::current()) -> Request
+        rank_t from_rank,
+        tag_t tag = 0,
+        sloc_t sloc = sloc_t::current()) -> request_t
     {
-        Request r;
+        request_t r;
         check(sloc, tiny_mpi_check_op(MPI_Irecv), to, sizeof(T) * n, type<char>, from_rank, tag, MPI_COMM_WORLD, &r);
         return r;
     }
@@ -271,9 +273,9 @@ namespace tiny_mpi
     [[nodiscard]]
     auto recv(
         std::ranges::contiguous_range auto& to,
-        int from_rank,
-        int tag = 0,
-        sloc_t sloc = sloc_t::current()) -> Request
+        rank_t from_rank,
+        tag_t tag = 0,
+        sloc_t sloc = sloc_t::current()) -> request_t
     {
         return recv(
             std::ranges::data(to),
@@ -289,9 +291,9 @@ namespace tiny_mpi
         T* buffer,
         int n,
         MPI_Op op = MPI_SUM,
-        sloc_t sloc = sloc_t::current()) -> Request
+        sloc_t sloc = sloc_t::current()) -> request_t
     {
-        Request r;
+        request_t r;
         check(sloc, tiny_mpi_check_op(MPI_Iallreduce), MPI_IN_PLACE, buffer, n, type<T>, op, MPI_COMM_WORLD, &r);
         return r;
     }
@@ -300,7 +302,7 @@ namespace tiny_mpi
     auto allreduce(
         std::ranges::contiguous_range auto& v,
         MPI_Op op = MPI_SUM,
-        sloc_t sloc = sloc_t::current()) -> Request
+        sloc_t sloc = sloc_t::current()) -> request_t
     {
         return allreduce(
             std::ranges::data(v),
@@ -314,7 +316,7 @@ namespace tiny_mpi
     auto allreduce(
         std::ranges::contiguous_range auto& v,
         Op,
-        sloc_t sloc = sloc_t::current()) -> Request
+        sloc_t sloc = sloc_t::current()) -> request_t
     {
         return allreduce(v, op<Op>, sloc);
     }
@@ -326,9 +328,9 @@ namespace tiny_mpi
         T* values,
         std::span<int const> counts,
         std::span<int const> offsets,
-        sloc_t sloc = sloc_t::current()) -> Request
+        sloc_t sloc = sloc_t::current()) -> request_t
     {
-        Request r;
+        request_t r;
         check(
             sloc,
             tiny_mpi_check_op(MPI_Iallgatherv),
@@ -350,16 +352,16 @@ namespace tiny_mpi
         Range& values,
         std::span<int const> counts,
         std::span<int const> offsets,
-        sloc_t sloc = sloc_t::current()) -> Request
+        sloc_t sloc = sloc_t::current()) -> request_t
     {
         return allgather(std::ranges::data(values), counts, offsets, sloc);
     }
 
     template <std::size_t N>
     struct async {
-        Request rs[N];
+        request_t rs[N];
 
-        constexpr async(std::same_as<Request> auto... rs) noexcept : rs { rs... } {
+        constexpr async(std::same_as<request_t> auto... rs) noexcept : rs { rs... } {
         }
 
         constexpr ~async() {
@@ -367,7 +369,7 @@ namespace tiny_mpi
         }
     };
 
-    async(std::same_as<Request> auto... rs) -> async<sizeof...(rs)>;
+    async(std::same_as<request_t> auto... rs) -> async<sizeof...(rs)>;
 } // namespace tiny_mpi
 
 #endif // TINY_MPI_CXX_INCLUDE_TINY_MPI_TINY_MPI_HPP
