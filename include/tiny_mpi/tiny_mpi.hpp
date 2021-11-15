@@ -51,10 +51,10 @@ namespace tiny_mpi
     template <> constexpr MPI_Datatype type<long double>        = MPI_LONG_DOUBLE;
 
     template <class T>
-    concept trivial_type = std::is_trivial_v<T>;
+    concept trivially_copyable_type = std::is_trivially_copyable_v<T>;
 
     template <class T>
-    concept integral_type = trivial_type<T> and std::same_as<decltype(type<T>), const MPI_Datatype>;
+    concept integral_type = trivially_copyable_type<T> and std::same_as<decltype(type<T>), const MPI_Datatype>;
 
     struct min {
         constexpr auto operator()(auto a, auto b) noexcept {
@@ -189,7 +189,7 @@ namespace tiny_mpi
         return probe(source, type<T>, tag, sloc);
     }
 
-    template <trivial_type T>
+    template <trivially_copyable_type T>
     [[nodiscard]]
     auto probe(
         rank_t source,
@@ -213,7 +213,7 @@ namespace tiny_mpi
         return r;
     }
 
-    template <trivial_type T>
+    template <trivially_copyable_type T>
     [[nodiscard]]
     auto send(
         const T* from,
@@ -256,7 +256,7 @@ namespace tiny_mpi
         return r;
     }
 
-    template <trivial_type T>
+    template <trivially_copyable_type T>
     [[nodiscard]]
     auto recv(
         T* to,
