@@ -32,6 +32,13 @@ namespace tiny_mpi
     using rank_t = int;
     using tag_t = int;
 
+    enum thread_support_t : int {
+        THREAD_SINGLE = MPI_THREAD_FUNNELED,
+        THREAD_FUNNELED = MPI_THREAD_FUNNELED,
+        THREAD_SERIALIZED = MPI_THREAD_SERIALIZED,
+        THREAD_MULTIPLE = MPI_THREAD_MULTIPLE
+    };
+
     /// Simple variable template to map arithmatic types to their MPI equivalents.
     template <class T> constexpr std::false_type type = {};
     template <> constexpr MPI_Datatype type<std::byte>          = MPI_BYTE;
@@ -85,29 +92,31 @@ namespace tiny_mpi
 
     /// Simple wrappers to check initialized and finalized.
     bool initialized(
-        sloc_t = sloc_t::current()) noexcept;       //!< debugging location
+        sloc_t = sloc_t::current()) noexcept;   //!< debugging location
 
     bool finalized(
-        sloc_t = sloc_t::current()) noexcept;       //!< debugging location
+        sloc_t = sloc_t::current()) noexcept;   //!< debugging location
 
     /// Simple wrappers, will check initialized and finalized.
-    void init(
-        sloc_t = sloc_t::current()) noexcept;       //!< debugging location
+    auto init(
+        thread_support_t = THREAD_SERIALIZED,
+        sloc_t = sloc_t::current()) noexcept //!< debugging location
+        -> thread_support_t;
 
     void fini(
-        sloc_t = sloc_t::current()) noexcept;       //!< debugging location
+        sloc_t = sloc_t::current()) noexcept;   //!< debugging location
 
     /// Will `exit(EXIT_FAILURE)` if `!initialized()`.
     [[noreturn]]
     void abort(
-        int e = -1,                                 //!< error code
-        sloc_t = sloc_t::current()) noexcept;       //!< debugging location
+        int e = -1,                             //!< error code
+        sloc_t = sloc_t::current()) noexcept;   //!< debugging location
 
     /// Will translate `e` to a string and print an error.
     void print_error(
-        const char* symbol,                         //!< MPI_* as string
-        int e,                                      //!< error code
-        sloc_t = sloc_t::current()) noexcept;       //!< debugging location
+        const char* symbol,                     //!< MPI_* as string
+        int e,                                  //!< error code
+        sloc_t = sloc_t::current()) noexcept;   //!< debugging location
 
     /// Returns the count for a matching message.
     [[nodiscard]]
@@ -120,7 +129,7 @@ namespace tiny_mpi
     /// Blocks until all of the requests are complete, ignores status.
     void wait(
         std::span<request_t> reqs,              //!< requests
-        sloc_t = sloc_t::current()) noexcept;       //!< debugging location
+        sloc_t = sloc_t::current()) noexcept;   //!< debugging location
 
     /// If f(ts...)->error, prints and error and aborts.
     inline constexpr struct
