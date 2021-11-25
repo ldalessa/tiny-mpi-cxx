@@ -379,6 +379,32 @@ namespace tiny_mpi
     };
 
     async(std::same_as<request_t> auto... rs) -> async<sizeof...(rs)>;
+
+
+    /// An raii-scoped init.
+    inline constexpr struct scoped_init_fn {
+        struct _raii {
+            bool _wait;
+
+            ~_raii() {
+                if (_wait) {
+                    wait(barrier());
+                }
+                fini();
+            }
+        };
+
+        [[nodiscard]]
+        auto operator()(
+            bool wait = true,
+            thread_support_t threading = THREAD_SERIALIZED,
+            sloc_t sloc = sloc_t::current()) const noexcept
+            -> _raii
+        {
+            init(threading, sloc);
+            return _raii { ._wait = wait };
+        }
+    } scoped_init{};
 } // namespace tiny_mpi
 
 #endif // TINY_MPI_CXX_INCLUDE_TINY_MPI_TINY_MPI_HPP
