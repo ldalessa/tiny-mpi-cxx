@@ -330,6 +330,17 @@ namespace tiny_mpi
         return allreduce(v, op<Op>, sloc);
     }
 
+    template <integral_type T>
+    [[nodiscard]]
+    auto allreduce(
+        T& value,
+        MPI_Op op = MPI_SUM,
+        sloc_t sloc = sloc_t::current()) -> request_t
+    {
+        request_t r;
+        check(sloc, tiny_mpi_check_op(MPI_Iallreduce), MPI_IN_PLACE, std::addressof(value), 1, type<T>, op, MPI_COMM_WORLD, &r);
+        return r;
+    }
 
     template <class T>
     [[nodiscard]]
