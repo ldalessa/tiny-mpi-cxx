@@ -342,6 +342,40 @@ namespace tiny_mpi
         return r;
     }
 
+    template <integral_type T>
+    [[nodiscard]]
+    auto allgather(
+        T* values,
+        int count,
+        sloc_t sloc = sloc_t::current()) -> request_t
+    {
+        request_t r;
+        check(
+            sloc,
+            tiny_mpi_check_op(MPI_Iallgather),
+            MPI_IN_PLACE,
+            0,
+            MPI_DATATYPE_NULL,
+            values,
+            count,
+            type<T>,
+            MPI_COMM_WORLD,
+            &r);
+        return r;
+    }
+
+    template <std::ranges::contiguous_range Range>
+    [[nodiscard]]
+    auto allgather(
+        Range& values,
+        sloc_t sloc = sloc_t::current()) -> request_t
+    {
+        return allgather(
+            std::ranges::data(values),
+            std::ranges::ssize(values),
+            sloc);
+    }
+
     template <class T>
     [[nodiscard]]
     auto allgather(
