@@ -39,6 +39,18 @@ namespace tiny_mpi
         THREAD_MULTIPLE = MPI_THREAD_MULTIPLE
     };
 
+    template <class T>
+    concept user_defined_type = requires {
+        { std::remove_cvref_t<T>::mpi_type() } -> std::same_as<MPI_Datatype>;
+    };
+
+    template <user_defined_type T>
+    struct DeferredType {
+        operator MPI_Datatype() const {
+            return std::remove_cvref_t<T>::mpi_type();
+        }
+    };
+
     /// Simple variable template to map arithmatic types to their MPI equivalents.
     template <class T> inline constexpr std::false_type type = {};
     template <> constexpr MPI_Datatype type<std::byte>          = MPI_BYTE;
@@ -56,6 +68,8 @@ namespace tiny_mpi
     template <> constexpr MPI_Datatype type<float>              = MPI_FLOAT;
     template <> constexpr MPI_Datatype type<double>             = MPI_DOUBLE;
     template <> constexpr MPI_Datatype type<long double>        = MPI_LONG_DOUBLE;
+
+    template <user_defined_type T> DeferredType<T> const type<T>{};
 
     template <class T>
     concept trivially_copyable = std::is_trivially_copyable_v<T>;
