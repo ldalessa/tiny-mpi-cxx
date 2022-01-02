@@ -52,7 +52,7 @@ namespace tiny_mpi
     };
 
     /// Simple variable template to map arithmatic types to their MPI equivalents.
-    template <class T> inline constexpr std::false_type type = {};
+    template <class T> inline constexpr auto type = not specialized(type<T>);
     template <> constexpr MPI_Datatype type<std::byte>          = MPI_BYTE;
     template <> constexpr MPI_Datatype type<char>               = MPI_CHAR;
     template <> constexpr MPI_Datatype type<signed char>        = MPI_CHAR;
@@ -70,7 +70,7 @@ namespace tiny_mpi
     template <> constexpr MPI_Datatype type<long double>        = MPI_LONG_DOUBLE;
 
     template <class T> requires std::is_enum_v<T>
-    constexpr MPI_Datatype type<T> = type<std::underlying_type<T>>;
+    constexpr MPI_Datatype type<T> = type<std::underlying_type_t<T>>;
 
     template <user_defined_type T> DeferredType<T> const type<T>{};
 
