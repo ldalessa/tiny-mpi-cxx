@@ -370,13 +370,10 @@ namespace tiny_mpi
         Range& values,
         sloc_t sloc = sloc_t::current()) -> request_t
     {
-        return allgather(
-            std::ranges::data(values),
-            std::ranges::ssize(values),
-            sloc);
+        return allgather(std::ranges::data(values), 1, sloc);
     }
 
-    template <class T>
+    template <integral_type T>
     [[nodiscard]]
     auto allgather(
         T* values,
@@ -395,6 +392,38 @@ namespace tiny_mpi
             data(counts),
             data(offsets),
             type<T>,
+            MPI_COMM_WORLD,
+            &r);
+        return r;
+    }
+
+    template <trivially_copyable_type T>
+    [[nodiscard]]
+    auto allgather(
+        T* values,
+        std::span<int const> counts,
+        std::span<int const> offsets,
+        sloc_t sloc = sloc_t::current()) -> request_t
+    {
+        MPI_Datatype tp{};
+        check(
+            sloc,
+            tiny_mpi_check_op(MPI_Type_contiguous),
+            sizeof(T),
+            type<char>,
+            &tp);
+
+        request_t r;
+        check(
+            sloc,
+            tiny_mpi_check_op(MPI_Iallgatherv),
+            MPI_IN_PLACE,
+            0,
+            MPI_DATATYPE_NULL,
+            values,
+            data(counts),
+            data(offsets),
+            tp,
             MPI_COMM_WORLD,
             &r);
         return r;
