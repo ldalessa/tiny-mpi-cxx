@@ -69,6 +69,9 @@ namespace tiny_mpi
     template <> constexpr MPI_Datatype type<double>             = MPI_DOUBLE;
     template <> constexpr MPI_Datatype type<long double>        = MPI_LONG_DOUBLE;
 
+    template <class T> requires std::is_enum_v<T>
+    constexpr MPI_Datatype type<T> = type<std::underlying_type<T>>;
+
     template <user_defined_type T> DeferredType<T> const type<T>{};
 
     template <class T>
