@@ -52,7 +52,7 @@ namespace tiny_mpi
     };
 
     /// Simple variable template to map arithmatic types to their MPI equivalents.
-    template <class T> inline constexpr auto type = not specialized(type<T>);
+    template <class T> inline constexpr auto type = std::false_type{};
     template <> constexpr MPI_Datatype type<std::byte>          = MPI_BYTE;
     template <> constexpr MPI_Datatype type<char>               = MPI_CHAR;
     template <> constexpr MPI_Datatype type<signed char>        = MPI_CHAR;
@@ -311,7 +311,7 @@ namespace tiny_mpi
             std::move(sloc));
     }
 
-    template <class T>
+    template <mpi_typed T>
     [[nodiscard]]
     auto allreduce(
         T* buffer,
@@ -324,11 +324,13 @@ namespace tiny_mpi
         return r;
     }
 
+    template <std::ranges::contiguous_range Range>
     [[nodiscard]]
     auto allreduce(
-        std::ranges::contiguous_range auto& v,
+        Range& v,
         MPI_Op op = MPI_SUM,
         sloc_t sloc = sloc_t::current()) -> request_t
+        requires mpi_typed<std::ranges::range_value_t<Range>>
     {
         return allreduce(
             std::ranges::data(v),
@@ -337,12 +339,13 @@ namespace tiny_mpi
             sloc);
     }
 
-    template <reduction_op Op>
+    template <std::ranges::contiguous_range Range, reduction_op Op>
     [[nodiscard]]
     auto allreduce(
-        std::ranges::contiguous_range auto& v,
+        Range& v,
         Op,
         sloc_t sloc = sloc_t::current()) -> request_t
+        requires mpi_typed<std::ranges::range_value_t<Range>>
     {
         return allreduce(v, op<Op>, sloc);
     }
