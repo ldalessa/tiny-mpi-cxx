@@ -40,7 +40,7 @@ namespace tiny_mpi
     };
 
     /// Simple variable template to map arithmatic types to their MPI equivalents.
-    template <class T> constexpr std::false_type type = {};
+    template <class T> inline constexpr std::false_type type = {};
     template <> constexpr MPI_Datatype type<std::byte>          = MPI_BYTE;
     template <> constexpr MPI_Datatype type<char>               = MPI_CHAR;
     template <> constexpr MPI_Datatype type<signed char>        = MPI_CHAR;
@@ -58,10 +58,10 @@ namespace tiny_mpi
     template <> constexpr MPI_Datatype type<long double>        = MPI_LONG_DOUBLE;
 
     template <class T>
-    concept trivially_copyable_type = std::is_trivially_copyable_v<T>;
+    concept trivially_copyable = std::is_trivially_copyable_v<T>;
 
     template <class T>
-    concept integral_type = trivially_copyable_type<T> and std::same_as<decltype(type<T>), const MPI_Datatype>;
+    concept mpi_typed = trivially_copyable<T> and std::convertible_to<decltype(type<T>), MPI_Datatype>;
 
     struct min {
         constexpr auto operator()(auto a, auto b) noexcept {
@@ -76,7 +76,7 @@ namespace tiny_mpi
     };
 
     /// Simple variable template to map the common reduction operators.
-    template <class T> constexpr std::false_type op = {};
+    template <class T> inline constexpr std::false_type op = {};
     template <> constexpr MPI_Op op<min> = MPI_MIN;
     template <> constexpr MPI_Op op<max> = MPI_MAX;
     template <class T> constexpr MPI_Op op<std::plus<T>>        = MPI_SUM;
@@ -188,7 +188,7 @@ namespace tiny_mpi
         wait(rs);
     }
 
-    template <integral_type T>
+    template <mpi_typed T>
     [[nodiscard]]
     auto probe(
         rank_t source,
@@ -198,7 +198,7 @@ namespace tiny_mpi
         return probe(source, type<T>, tag, sloc);
     }
 
-    template <trivially_copyable_type T>
+    template <trivially_copyable T>
     [[nodiscard]]
     auto probe(
         rank_t source,
@@ -208,7 +208,7 @@ namespace tiny_mpi
         return probe(source, type<char>, tag, sloc) / sizeof(T);
     }
 
-    template <integral_type T>
+    template <mpi_typed T>
     [[nodiscard]]
     auto send(
         const T* from,
@@ -222,7 +222,7 @@ namespace tiny_mpi
         return r;
     }
 
-    template <trivially_copyable_type T>
+    template <trivially_copyable T>
     [[nodiscard]]
     auto send(
         const T* from,
@@ -251,7 +251,7 @@ namespace tiny_mpi
             std::move(sloc));
     }
 
-    template <integral_type T>
+    template <mpi_typed T>
     [[nodiscard]]
     auto recv(
         T* to,
@@ -265,7 +265,7 @@ namespace tiny_mpi
         return r;
     }
 
-    template <trivially_copyable_type T>
+    template <trivially_copyable T>
     [[nodiscard]]
     auto recv(
         T* to,
@@ -330,7 +330,7 @@ namespace tiny_mpi
         return allreduce(v, op<Op>, sloc);
     }
 
-    template <integral_type T>
+    template <mpi_typed T>
     [[nodiscard]]
     auto allreduce(
         T& value,
@@ -342,7 +342,7 @@ namespace tiny_mpi
         return r;
     }
 
-    template <integral_type T>
+    template <mpi_typed T>
     [[nodiscard]]
     auto allgather(
         T* values,
@@ -369,11 +369,12 @@ namespace tiny_mpi
     auto allgather(
         Range& values,
         sloc_t sloc = sloc_t::current()) -> request_t
+        requires mpi_typed<std::ranges::range_value_t<Range>>
     {
         return allgather(std::ranges::data(values), 1, sloc);
     }
 
-    template <integral_type T>
+    template <mpi_typed T>
     [[nodiscard]]
     auto allgather(
         T* values,
@@ -397,38 +398,6 @@ namespace tiny_mpi
         return r;
     }
 
-    template <trivially_copyable_type T>
-    [[nodiscard]]
-    auto allgather(
-        T* values,
-        std::span<int const> counts,
-        std::span<int const> offsets,
-        sloc_t sloc = sloc_t::current()) -> request_t
-    {
-        MPI_Datatype tp{};
-        check(
-            sloc,
-            tiny_mpi_check_op(MPI_Type_contiguous),
-            sizeof(T),
-            type<char>,
-            &tp);
-
-        request_t r;
-        check(
-            sloc,
-            tiny_mpi_check_op(MPI_Iallgatherv),
-            MPI_IN_PLACE,
-            0,
-            MPI_DATATYPE_NULL,
-            values,
-            data(counts),
-            data(offsets),
-            tp,
-            MPI_COMM_WORLD,
-            &r);
-        return r;
-    }
-
     template <std::ranges::contiguous_range Range>
     [[nodiscard]]
     auto allgather(
@@ -436,6 +405,7 @@ namespace tiny_mpi
         std::span<int const> counts,
         std::span<int const> offsets,
         sloc_t sloc = sloc_t::current()) -> request_t
+        requires mpi_typed<std::ranges::range_value_t<Range>>
     {
         return allgather(std::ranges::data(values), counts, offsets, sloc);
     }
