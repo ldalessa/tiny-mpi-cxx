@@ -69,21 +69,21 @@ namespace tiny_mpi
     // template <> constexpr MPI_Datatype type<double>             = MPI_DOUBLE;
     // template <> constexpr MPI_Datatype type<long double>        = MPI_LONG_DOUBLE;
 
-    template <> inline MPI_Datatype type<std::byte>          = MPI_BYTE;
-    template <> inline MPI_Datatype type<char>               = MPI_CHAR;
-    template <> inline MPI_Datatype type<signed char>        = MPI_CHAR;
-    template <> inline MPI_Datatype type<short>              = MPI_SHORT;
-    template <> inline MPI_Datatype type<int>                = MPI_INT;
-    template <> inline MPI_Datatype type<long>               = MPI_LONG;
-    template <> inline MPI_Datatype type<long long>          = MPI_LONG_LONG_INT;
-    template <> inline MPI_Datatype type<unsigned char>      = MPI_UNSIGNED_CHAR;
-    template <> inline MPI_Datatype type<unsigned short>     = MPI_UNSIGNED_SHORT;
-    template <> inline MPI_Datatype type<unsigned int>       = MPI_UNSIGNED;
-    template <> inline MPI_Datatype type<unsigned long>      = MPI_UNSIGNED_LONG;
-    template <> inline MPI_Datatype type<unsigned long long> = MPI_UNSIGNED_LONG;
-    template <> inline MPI_Datatype type<float>              = MPI_FLOAT;
-    template <> inline MPI_Datatype type<double>             = MPI_DOUBLE;
-    template <> inline MPI_Datatype type<long double>        = MPI_LONG_DOUBLE;
+    template <> inline MPI_Datatype const type<std::byte>          = MPI_BYTE;
+    template <> inline MPI_Datatype const type<char>               = MPI_CHAR;
+    template <> inline MPI_Datatype const type<signed char>        = MPI_CHAR;
+    template <> inline MPI_Datatype const type<short>              = MPI_SHORT;
+    template <> inline MPI_Datatype const type<int>                = MPI_INT;
+    template <> inline MPI_Datatype const type<long>               = MPI_LONG;
+    template <> inline MPI_Datatype const type<long long>          = MPI_LONG_LONG_INT;
+    template <> inline MPI_Datatype const type<unsigned char>      = MPI_UNSIGNED_CHAR;
+    template <> inline MPI_Datatype const type<unsigned short>     = MPI_UNSIGNED_SHORT;
+    template <> inline MPI_Datatype const type<unsigned int>       = MPI_UNSIGNED;
+    template <> inline MPI_Datatype const type<unsigned long>      = MPI_UNSIGNED_LONG;
+    template <> inline MPI_Datatype const type<unsigned long long> = MPI_UNSIGNED_LONG;
+    template <> inline MPI_Datatype const type<float>              = MPI_FLOAT;
+    template <> inline MPI_Datatype const type<double>             = MPI_DOUBLE;
+    template <> inline MPI_Datatype const type<long double>        = MPI_LONG_DOUBLE;
 
     template <class T> requires std::is_enum_v<T>
     constexpr MPI_Datatype type<T> = type<std::underlying_type_t<T>>;
@@ -119,15 +119,15 @@ namespace tiny_mpi
     // template <class T> constexpr MPI_Op op<std::bit_xor<T>>     = MPI_BXOR;
     // template <class T> constexpr MPI_Op op<std::logical_or<T>>  = MPI_LOR;
     // template <class T> constexpr MPI_Op op<std::logical_and<T>> = MPI_LAND;
-    template <> inline MPI_Op op<min> = MPI_MIN;
-    template <> inline MPI_Op op<max> = MPI_MAX;
-    template <class T> inline MPI_Op op<std::plus<T>>        = MPI_SUM;
-    template <class T> inline MPI_Op op<std::multiplies<T>>  = MPI_PROD;
-    template <class T> inline MPI_Op op<std::bit_or<T>>      = MPI_BOR;
-    template <class T> inline MPI_Op op<std::bit_and<T>>     = MPI_BAND;
-    template <class T> inline MPI_Op op<std::bit_xor<T>>     = MPI_BXOR;
-    template <class T> inline MPI_Op op<std::logical_or<T>>  = MPI_LOR;
-    template <class T> inline MPI_Op op<std::logical_and<T>> = MPI_LAND;
+    template <> inline MPI_Op const op<min> = MPI_MIN;
+    template <> inline MPI_Op const op<max> = MPI_MAX;
+    template <class T> inline MPI_Op const op<std::plus<T>>        = MPI_SUM;
+    template <class T> inline MPI_Op const op<std::multiplies<T>>  = MPI_PROD;
+    template <class T> inline MPI_Op const op<std::bit_or<T>>      = MPI_BOR;
+    template <class T> inline MPI_Op const op<std::bit_and<T>>     = MPI_BAND;
+    template <class T> inline MPI_Op const op<std::bit_xor<T>>     = MPI_BXOR;
+    template <class T> inline MPI_Op const op<std::logical_or<T>>  = MPI_LOR;
+    template <class T> inline MPI_Op const op<std::logical_and<T>> = MPI_LAND;
 
     template <class T>
     concept reduction_op = std::same_as<decltype(op<T>), const MPI_Op>;
@@ -347,6 +347,18 @@ namespace tiny_mpi
         request_t r;
         check(sloc, tiny_mpi_check_op(MPI_Iallreduce), MPI_IN_PLACE, buffer, n, type<T>, op, MPI_COMM_WORLD, &r);
         return r;
+    }
+
+
+    template <mpi_typed T, reduction_op Op>
+    [[nodiscard]]
+    auto allreduce(
+        T* v,
+        int n,
+        Op,
+        sloc_t sloc = sloc_t::current()) -> request_t
+    {
+        return allreduce(v, n, op<Op>, sloc);
     }
 
     template <std::ranges::contiguous_range Range>
